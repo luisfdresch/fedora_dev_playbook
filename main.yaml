@@ -54,6 +54,11 @@
     
     - name: Install programs
       block:
+        - name: Install acl
+          ansible.builtin.package:
+            name: acl
+            state: present
+
         - name: Install git
           ansible.builtin.package:
             name: git
@@ -64,6 +69,8 @@
             repo: https://github.com/luisfdresch/luisfdresch.git
             dest: "/home/{{ username }}/luisfdresch"
             depth: 1
+          become: yes
+          become_user: "{{ username }}"
 
         - name: Install gh
           ansible.builtin.package:
@@ -97,6 +104,8 @@
             repo: https://github.com/ohmyzsh/ohmyzsh.git
             dest: "/home/{{ username }}/.oh-my-zsh"
             depth: 1
+          become: yes
+          become_user: "{{ username }}"
 
         - name: Install zsh-autosuggestions plugin # noqa: latest
           ansible.builtin.git:
@@ -111,12 +120,16 @@
             repo: https://github.com/zsh-users/zsh-completions
             dest: "/home/{{ username }}/.oh-my-zsh/custom/plugins/zsh-completions"
             depth: 1
+          become: yes
+          become_user: "{{ username }}"
 
         - name: Install zsh-syntax-highlighting plugin # noqa: latest
           ansible.builtin.git:
             repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
             dest: "/home/{{ username }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
             depth: 1
+          become: yes
+          become_user: "{{ username }}"
 
         - name: Install neovim
           ansible.builtin.package:
@@ -138,6 +151,8 @@
             repo: https://github.com/nvim-lua/kickstart.nvim.git
             dest: "/home/{{ username }}/.config/nvim"
             depth: 1
+          become: yes
+          become_user: "{{ username }}"
 
         - name: Link dotfiles to homefolder
           ansible.builtin.file:
@@ -145,3 +160,6 @@
             dest: "/home/{{ username }}/.zshrc"
             state: link
             mode: 0644
+          become: yes
+          become_user: "{{ username }}"
+      become_user: root
