@@ -1,0 +1,147 @@
+---
+- name: Create user.
+  hosts: vm
+  become: true
+  become_method: ansible.builtin.sudo
+
+  vars_prompt:
+    - name: username
+      prompt: What is your username?
+      private: false
+  
+    - name: password
+      prompt: What is your password?
+      private: true
+      encrypt: sha512_crypt
+      confirm: true
+      salt_size: 7
+
+  tasks:
+    - name: Validate and create user
+      block:
+        - name: Get username
+          ansible.builtin.getent:
+            database: passwd
+            key: "{{ username }}"
+
+        - name: Error message
+          ansible.builtin.debug:
+            msg: User already created
+      rescue:
+        - name: Create a login user
+          ansible.builtin.user:
+            user: "{{ username }}"
+            password: "{{ password }}"
+            state: present
+            shell: /bin/zsh
+            system: false
+            createhome: true
+            groups:
+              wheel
+
+        - name: Make sure we have a 'wheel' group
+          ansible.builtin.group:
+            name: wheel
+            state: present
+
+        - name: Allow group wheel sudo access no password
+          community.general.sudoers:
+            name: wheel-all
+            group: wheel
+            commands: ALL
+            nopassword: true
+
+    
+    - name: Install programs
+      block:
+        - name: Install git
+          ansible.builtin.package:
+            name: git
+            state: present
+
+        - name: Copy dotfiles
+          ansible.builtin.git:
+            repo: https://github.com/luisfdresch/luisfdresch.git
+            dest: "/home/{{ username }}/luisfdresch"
+            depth: 1
+
+        - name: Install gh
+          ansible.builtin.package:
+            name: gh
+            state: present
+
+        - name: Install zsh
+          ansible.builtin.package:
+            name: zsh
+            state: present
+
+        - name: Install util-linux-user
+          ansible.builtin.package:
+            name: util-linux-user
+            state: present
+
+        - name: Install htop, tree
+          ansible.builtin.package:
+            name: 
+              - htop
+              - tree
+            state: present
+
+        - name: Install ripgrep
+          ansible.builtin.package:
+            name: ripgrep
+            state: present
+
+        - name: Install ohmyzsh
+          ansible.builtin.git:
+            repo: https://github.com/ohmyzsh/ohmyzsh.git
+            dest: "/home/{{ username }}/.oh-my-zsh"
+            depth: 1
+
+        - name: Install zsh-autosuggestions plugin # noqa: latest
+          ansible.builtin.git:
+            repo: https://github.com/zsh-users/zsh-autosuggestions
+            dest: "/home/{{ username }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+            depth: 1
+          become: yes
+          become_user: "{{ username }}"
+
+        - name: Install zsh-completions plugin # noqa: latest
+          ansible.builtin.git:
+            repo: https://github.com/zsh-users/zsh-completions
+            dest: "/home/{{ username }}/.oh-my-zsh/custom/plugins/zsh-completions"
+            depth: 1
+
+        - name: Install zsh-syntax-highlighting plugin # noqa: latest
+          ansible.builtin.git:
+            repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
+            dest: "/home/{{ username }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+            depth: 1
+
+        - name: Install neovim
+          ansible.builtin.package:
+            name: neovim
+            state: present
+
+        - name: Install build-essential equivalent
+          ansible.builtin.package:
+            name: 
+              - make
+              - automake
+              - gcc
+              - gcc-c++
+              - kernel-devel
+            state: present
+
+        - name: Kickstart nvim
+          ansible.builtin.git:
+            repo: https://github.com/nvim-lua/kickstart.nvim.git
+            dest: "/home/{{ username }}/.config/nvim"
+            depth: 1
+
+        - name: Link dotfiles to homefolder
+          ansible.builtin.file:
+            src: "/home/{{ username }}/luisfdresch/etc/zshrc"
+            dest: "/home/{{ username }}/.zshrc"
+            state: link
+            mode: 0644
